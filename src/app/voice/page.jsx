@@ -5,6 +5,8 @@ import { Mic, MicOff } from "lucide-react";
 import ApertureMark from "@/components/ApertureMark";
 import DeviceChip from "@/components/DeviceChip";
 import { useDevices } from "@/lib/useDevices";
+import { useRealtimeMessages } from "@/lib/useRealtimeMessages";
+import { getDeviceIdentity } from "@/lib/deviceIdentity";
 import { useSpeech } from "@/lib/useSpeech";
 import { sendMessage } from "@/lib/groqClient";
 
@@ -20,24 +22,51 @@ export default function VoicePage() {
     }
   }, [devices, target]);
 
-  const handleFinalResult = useCallback(async (transcript) => {
-    if (!transcript) return;
-    setThinking(true);
-    try {
-      const reply = await sendMessage([{ role: "user", content: transcript }]);
-      setLastReply(reply.content);
-      speak(reply.content);
-    } catch {
-      setLastReply("Backend isn't wired up yet — connect /api/chat to Groq for real replies.");
-    } finally {
-      setThinking(false);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   const { supported, listening, interimTranscript, error, start, stop, speak } = useSpeech({
-    onFinalResult: handleFinalResult,
+    onFinalResult: useCallback((transcript) => {
+      if (!transcript) return;
+      setThinking(true);
+      const identity = getDeviceIdentity();
+      const effectiveTarget = target ?? identity.id;
+      const routedAway = effectiveTarget !== identity.id;
+
+      const route = {
+        source_device_id: identity.id,
+        source_device_name: identity.name,
+        target_device_id: effectiveTarget,
+        target_device_name: devices.find((d) => d.id === effectiveTarget)?.name ?? null,
+      };
+
+      sendMessage([{ role: "user", content: transcript }], route)
+        .then((reply) => {
+          if (routedAway) {
+            setLastReply(`Reply routed to ${route.target_device_name ?? "another device"}.`);
+          } else {
+            setLastReply(reply.content);
+            speak(reply.content);
+          }
+        })
+        .catch(() => {
+          setLastReply("Backend isn't wired up yet — connect /api/chat to Groq for real replies.");
+        })
+        .finally(() => {
+          setThinking(false);
+        });
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [target, devices, speak]),
   });
+
+  const onIncomingMessage = useCallback(
+    (msg) => {
+      if (msg.role === "assistant" && msg.target_device_id === getDeviceIdentity().id) {
+        setLastReply(msg.content);
+        speak(msg.content);
+      }
+    },
+    [speak]
+  );
+
+  useRealtimeMessages({ onMessage: onIncomingMessage });
 
   return (
     <div className="flex h-full flex-col">

@@ -9,11 +9,11 @@ const BACKEND_URL = "/api/chat";
  * @param {{role: "user"|"assistant"|"system", content: string}[]} messages
  * @returns {Promise<{content: string, target_device?: string, action?: string}>}
  */
-export async function sendMessage(messages) {
+export async function sendMessage(messages, extra = {}) {
   const res = await fetch(BACKEND_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ messages }),
+    body: JSON.stringify({ messages, ...extra }),
   });
 
   if (!res.ok) {

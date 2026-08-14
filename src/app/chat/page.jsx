@@ -1,10 +1,11 @@
 "use client";
 
-import { useRef, useState, useEffect } from "react";
+import { useRef, useState, useEffect, useCallback } from "react";
 import { ArrowUp } from "lucide-react";
 import MessageBubble from "@/components/MessageBubble";
 import DeviceChip from "@/components/DeviceChip";
 import { useDevices } from "@/lib/useDevices";
+import { useRealtimeMessages } from "@/lib/useRealtimeMessages";
 import { getDeviceIdentity } from "@/lib/deviceIdentity";
 import { sendMessage } from "@/lib/groqClient";
 
@@ -32,10 +33,24 @@ export default function ChatPage() {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages, pending]);
 
+  const onIncomingMessage = useCallback((msg) => {
+    if (msg.role === "assistant" && msg.target_device_id === getDeviceIdentity().id) {
+      setMessages((prev) => [
+        ...prev,
+        { role: "assistant", content: msg.content, targetDevice: null },
+      ]);
+    }
+  }, []);
+
+  useRealtimeMessages({ onMessage: onIncomingMessage });
+
   async function handleSend(e) {
     e.preventDefault();
     const text = input.trim();
     if (!text || pending) return;
+
+    const identity = getDeviceIdentity();
+    const effectiveTarget = target ?? identity.id;
 
     const nextMessages = [...messages, { role: "user", content: text }];
     setMessages(nextMessages);
@@ -44,11 +59,17 @@ export default function ChatPage() {
 
     try {
       const reply = await sendMessage(
-        nextMessages.map(({ role, content }) => ({ role, content }))
+        nextMessages.map(({ role, content }) => ({ role, content })),
+        {
+          source_device_id: identity.id,
+          source_device_name: identity.name,
+          target_device_id: effectiveTarget,
+          target_device_name: devices.find((d) => d.id === effectiveTarget)?.name ?? null,
+        }
       );
       const routedTo =
-        target !== getDeviceIdentity().id
-          ? devices.find((d) => d.id === target)?.name ?? null
+        effectiveTarget !== identity.id
+          ? devices.find((d) => d.id === effectiveTarget)?.name ?? null
           : null;
       setMessages((prev) => [
         ...prev,
