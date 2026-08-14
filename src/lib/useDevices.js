@@ -10,19 +10,31 @@ const TOPIC = "vision-ai-devices";
  * `cannot add `presence` callbacks ... after subscribe()`. Several components
  * (Sidebar, Chat, Voice) mount useDevices() at once, so share a single realtime
  * subscription at module level and fan updates out to every live listener.
- * The channel is kept for the page's lifetime so StrictMode remounts never race
- * an in-flight unsubscribe.
  */
 const shared = {
   channel: null,
+  init: null,
   identity: null,
   presence: {},
+  dbDevices: [],
   listeners: new Set(),
   devices: [],
 };
 
-function toDeviceList(presenceState) {
+function onlineIds() {
+  return new Set(Object.values(shared.presence).flat().map((p) => p?.id));
+}
+
+/**
+ * Merges three sources:
+ *   - the current device (always first, always online)
+ *   - every registered device from the DB (offline unless currently present)
+ *   - any presence entries that aren't in the DB yet (e.g. raced the select)
+ */
+function toDeviceList() {
+  const online = onlineIds();
   const seen = new Set([shared.identity.id]);
+
   const list = [
     {
       id: shared.identity.id,
@@ -32,7 +44,18 @@ function toDeviceList(presenceState) {
     },
   ];
 
-  Object.values(presenceState)
+  shared.dbDevices.forEach((d) => {
+    if (seen.has(d.id)) return;
+    seen.add(d.id);
+    list.push({
+      id: d.id,
+      name: d.name ?? "Unknown device",
+      kind: d.kind ?? "browser",
+      online: online.has(d.id),
+    });
+  });
+
+  Object.values(shared.presence)
     .flat()
     .forEach((p) => {
       if (!p || seen.has(p.id)) return;
@@ -49,18 +72,15 @@ function toDeviceList(presenceState) {
 }
 
 function refreshDevices() {
-  shared.devices = toDeviceList(shared.presence);
+  shared.devices = toDeviceList();
   shared.listeners.forEach((listener) => listener(shared.devices));
 }
 
-/**
- * Upserts this device into the `devices` table so it's registered (and its
- * friendly name persisted) even when no other device is online.
- */
+/** Persists this device in the `devices` table so it's kept across sessions. */
 async function registerDevice() {
   if (!supabase) return;
   try {
-    await supabase.from("devices").upsert(
+    const { error } = await supabase.from("devices").upsert(
       {
         id: shared.identity.id,
         name: shared.identity.name,
@@ -69,45 +89,68 @@ async function registerDevice() {
       },
       { onConflict: "id" }
     );
+    if (error) throw error;
   } catch {
-    // Non-fatal: the presence channel below still announces this device in realtime.
+    // Non-fatal: presence below still announces this device in realtime.
+  }
+}
+
+/** Pulls every registered device so all devices are visible to each other. */
+async function loadRegisteredDevices() {
+  if (!supabase) return;
+  try {
+    const { data, error } = await supabase
+      .from("devices")
+      .select("id, name, kind, last_seen_at");
+    if (!error && data) {
+      shared.dbDevices = data;
+      refreshDevices();
+    }
+  } catch {
+    // Non-fatal.
   }
 }
 
 function ensureSubscription() {
-  if (shared.channel) return;
+  if (shared.channel || shared.init) return;
 
-  shared.identity = getDeviceIdentity();
-  refreshDevices();
-  registerDevice();
+  shared.init = (async () => {
+    shared.identity = getDeviceIdentity();
+    refreshDevices();
 
-  const channel = supabase.channel(TOPIC, {
-    config: { presence: { key: shared.identity.id } },
-  });
+    // Check existing devices first, register this one, then announce itself.
+    await registerDevice();
+    await loadRegisteredDevices();
 
-  channel
-    .on("presence", { event: "sync" }, () => {
-      shared.presence = channel.presenceState();
-      refreshDevices();
-    })
-    .subscribe(async (status) => {
-      if (status === "SUBSCRIBED") {
-        await channel.track({
-          id: shared.identity.id,
-          name: shared.identity.name,
-          kind: shared.identity.kind,
-          last_seen: Date.now(),
-        });
-      }
+    const channel = supabase.channel(TOPIC, {
+      config: { presence: { key: shared.identity.id } },
     });
 
-  shared.channel = channel;
+    channel
+      .on("presence", { event: "sync" }, () => {
+        shared.presence = channel.presenceState();
+        refreshDevices();
+      })
+      .subscribe(async (status) => {
+        if (status === "SUBSCRIBED") {
+          await channel.track({
+            id: shared.identity.id,
+            name: shared.identity.name,
+            kind: shared.identity.kind,
+            last_seen: Date.now(),
+          });
+        }
+      });
+
+    shared.channel = channel;
+  })();
 }
 
 /**
- * Realtime device list: the current device (always first) plus every other
- * device that joins the presence channel. When Supabase isn't configured, the
- * current device is still reported so it's always recognized.
+ * Realtime device list: the current device (always first) plus every device in
+ * the `devices` table, with online/offline state driven by the presence
+ * channel. When Supabase isn't configured, the current device is still
+ * reported so it's always recognized.
  */
 export function useDevices() {
   const [devices, setDevices] = useState([]);
