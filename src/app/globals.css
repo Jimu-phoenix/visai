@@ -1,0 +1,216 @@
+@import "tailwindcss";
+
+@theme {
+  --color-ink: #0e1013; /* app background */
+  --color-panel: #15181c; /* raised surfaces (sidebar, cards) */
+  --color-panel2: #1c2025; /* nested surfaces (input fields, chips) */
+  --color-hairline: #2a2e33; /* borders/dividers */
+  --color-amber: #ff8a3d; /* primary accent — "focus" / active state */
+  --color-amber-dim: #b85e22;
+  --color-cyan: #4fd8e0; /* secondary accent — device / network status */
+  --color-cyan-dim: #2e9198;
+  --color-paper: #f0ede6; /* primary text */
+  --color-muted: #8b9099; /* secondary text */
+
+  --animate-iris-pulse: iris-pulse 1.8s ease-in-out infinite;
+  --animate-iris-spin-slow: iris-spin-slow 12s linear infinite;
+
+  @keyframes iris-pulse {
+    0%,
+    100% {
+      transform: scale(1);
+      opacity: 0.55;
+    }
+    50% {
+      transform: scale(1.12);
+      opacity: 0.9;
+    }
+  }
+
+  @keyframes iris-spin-slow {
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(360deg);
+    }
+  }
+}
+
+@theme inline {
+  --font-display: var(--font-space-grotesk);
+  --font-body: var(--font-plex-sans);
+  --font-mono: var(--font-plex-mono);
+}
+
+@layer base {
+  body {
+    @apply bg-ink text-paper font-body antialiased;
+  }
+
+  ::selection {
+    @apply bg-amber/30 text-paper;
+  }
+
+  /* visible keyboard focus everywhere, no exceptions */
+  :focus-visible {
+    outline: 2px solid var(--color-amber);
+    outline-offset: 2px;
+  }
+
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-hairline) transparent;
+  }
+  *::-webkit-scrollbar {
+    width: 8px;
+  }
+  *::-webkit-scrollbar-thumb {
+    background: var(--color-hairline);
+    border-radius: 4px;
+  }
+}
+
+@layer components {
+  .markdown-body {
+    line-height: 1.7;
+    overflow-wrap: break-word;
+  }
+
+  .markdown-body > :first-child {
+    margin-top: 0;
+  }
+
+  .markdown-body > :last-child {
+    margin-bottom: 0;
+  }
+
+  .markdown-body p {
+    margin: 0.5em 0;
+  }
+
+  .markdown-body h1,
+  .markdown-body h2,
+  .markdown-body h3,
+  .markdown-body h4 {
+    margin: 0.9em 0 0.4em;
+    font-weight: 600;
+    line-height: 1.3;
+  }
+
+  .markdown-body h1 {
+    font-size: 1.2rem;
+  }
+
+  .markdown-body h2 {
+    font-size: 1.1rem;
+  }
+
+  .markdown-body h3 {
+    font-size: 1.05rem;
+  }
+
+  .markdown-body h4 {
+    font-size: 1rem;
+  }
+
+  .markdown-body ul,
+  .markdown-body ol {
+    margin: 0.5em 0;
+    padding-left: 1.25em;
+  }
+
+  .markdown-body ul {
+    list-style: disc;
+  }
+
+  .markdown-body ol {
+    list-style: decimal;
+  }
+
+  .markdown-body li {
+    margin: 0.2em 0;
+  }
+
+  .markdown-body li > ul,
+  .markdown-body li > ol {
+    margin: 0;
+  }
+
+  .markdown-body code {
+    font-family: var(--font-mono);
+    font-size: 0.85em;
+    background: var(--color-ink);
+    color: var(--color-cyan);
+    padding: 0.15em 0.4em;
+    border-radius: 0.3em;
+  }
+
+  .markdown-body pre {
+    margin: 0.6em 0;
+    padding: 0.75em 0.9em;
+    background: var(--color-ink);
+    border: 1px solid var(--color-hairline);
+    border-radius: 0.5em;
+    overflow-x: auto;
+  }
+
+  .markdown-body pre code {
+    background: none;
+    color: var(--color-paper);
+    padding: 0;
+    font-size: 0.85em;
+  }
+
+  .markdown-body a {
+    color: var(--color-cyan);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+
+  .markdown-body strong {
+    font-weight: 600;
+  }
+
+  .markdown-body blockquote {
+    margin: 0.5em 0;
+    padding-left: 0.75em;
+    border-left: 2px solid var(--color-amber);
+    color: var(--color-muted);
+  }
+
+  .markdown-body hr {
+    margin: 0.8em 0;
+    border: none;
+    border-top: 1px solid var(--color-hairline);
+  }
+
+  .markdown-body table {
+    width: 100%;
+    margin: 0.6em 0;
+    border-collapse: collapse;
+    font-size: 0.9em;
+  }
+
+  .markdown-body th,
+  .markdown-body td {
+    border: 1px solid var(--color-hairline);
+    padding: 0.35em 0.6em;
+    text-align: left;
+  }
+
+  .markdown-body th {
+    background: var(--color-panel);
+    font-weight: 600;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
