@@ -60,14 +60,14 @@ export default function ChatPage() {
 
   return (
     <div className="flex h-full flex-col">
-      <header className="flex items-center justify-between border-b border-hairline px-6 py-4">
+      <header className="flex items-center justify-between border-b border-hairline px-4 py-3 md:px-6 md:py-4">
         <div>
           <h1 className="font-display text-base font-semibold text-paper">Chat</h1>
           <p className="text-xs text-muted">Ask anything, route replies to any device in view</p>
         </div>
       </header>
 
-      <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto px-6 py-6">
+      <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto px-4 py-4 md:px-6 md:py-6">
         {messages.map((m, i) => (
           <MessageBubble key={i} role={m.role} content={m.content} targetDevice={m.targetDevice} />
         ))}
@@ -82,7 +82,7 @@ export default function ChatPage() {
         )}
       </div>
 
-      <div className="border-t border-hairline px-6 py-4">
+      <div className="border-t border-hairline px-4 py-3 md:px-6 md:py-4">
         <div className="mb-3 flex flex-wrap gap-2">
           {devices.map((d) => (
             <DeviceChip key={d.id} device={d} active={target === d.id} onClick={() => setTarget(d.id)} />

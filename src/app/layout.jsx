@@ -33,7 +33,7 @@ export default function RootLayout({ children }) {
       className={`${spaceGrotesk.variable} ${plexSans.variable} ${plexMono.variable}`}
     >
       <body className="bg-ink text-paper font-body antialiased">
-        <div className="flex h-screen w-screen overflow-hidden bg-ink">
+        <div className="flex h-dvh w-screen overflow-hidden bg-ink">
           <Sidebar />
           <main className="flex-1 overflow-hidden">{children}</main>
         </div>

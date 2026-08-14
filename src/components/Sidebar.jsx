@@ -16,32 +16,34 @@ export default function Sidebar() {
   const devices = useDevices();
 
   return (
-    <aside className="flex h-full w-64 shrink-0 flex-col border-r border-hairline bg-panel">
-      <div className="flex items-center gap-2 px-5 py-5">
+    <aside className="flex h-full w-16 shrink-0 flex-col border-r border-hairline bg-panel md:w-64">
+      <div className="flex items-center justify-center gap-2 px-2 py-5 md:justify-start md:px-5">
         <ApertureMark size={24} className="text-amber" />
-        <span className="font-display text-lg font-semibold tracking-tight text-paper">
+        <span className="hidden font-display text-lg font-semibold tracking-tight text-paper md:block">
           Vision AI
         </span>
       </div>
 
-      <nav className="flex flex-col gap-1 px-3">
+      <nav className="flex flex-col items-center gap-1 px-2 md:items-stretch md:px-3">
         {navItems.map(({ to, label, icon: Icon }) => (
           <Link
             key={to}
             href={to}
-            className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
+            title={label}
+            aria-label={label}
+            className={`flex items-center justify-center gap-3 rounded-lg px-2 py-2.5 text-sm font-medium transition-colors md:justify-start md:px-3 ${
               pathname === to
                 ? "bg-panel2 text-paper"
                 : "text-muted hover:bg-panel2/60 hover:text-paper"
             }`}
           >
             <Icon size={18} strokeWidth={2} />
-            {label}
+            <span className="hidden md:inline">{label}</span>
           </Link>
         ))}
       </nav>
 
-      <div className="mt-auto px-3 pb-5">
+      <div className="mt-auto hidden px-3 pb-5 md:block">
         <p className="px-3 pb-2 font-mono text-[11px] uppercase tracking-wider text-muted">
           Devices in view
         </p>

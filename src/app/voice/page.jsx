@@ -35,12 +35,12 @@ export default function VoicePage() {
 
   return (
     <div className="flex h-full flex-col">
-      <header className="border-b border-hairline px-6 py-4">
+      <header className="border-b border-hairline px-4 py-3 md:px-6 md:py-4">
         <h1 className="font-display text-base font-semibold text-paper">Voice</h1>
         <p className="text-xs text-muted">Speak a prompt, hear the answer back</p>
       </header>
 
-      <div className="flex flex-1 flex-col items-center justify-center gap-8 px-6">
+      <div className="flex flex-1 flex-col items-center justify-center gap-8 px-4 md:px-6">
         <button
           onClick={listening ? stop : start}
           disabled={!supported}
@@ -80,7 +80,7 @@ export default function VoicePage() {
         </div>
       </div>
 
-      <div className="border-t border-hairline px-6 py-4">
+      <div className="border-t border-hairline px-4 py-3 md:px-6 md:py-4">
         <p className="mb-3 font-mono text-[11px] uppercase tracking-wider text-muted">
           Speak, route reply to
         </p>
