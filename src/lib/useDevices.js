@@ -2,15 +2,6 @@ import { useEffect, useState } from "react";
 import { supabase } from "./supabaseClient";
 import { getDeviceIdentity } from "./deviceIdentity";
 
-const THIS_DEVICE = { id: "this", name: "This device", kind: "browser", online: true };
-
-// Fallback list used only when Supabase isn't configured yet.
-const MOCK_DEVICES = [
-  THIS_DEVICE,
-  { id: "tv-lounge", name: "Lounge TV", kind: "display", online: true },
-  { id: "desk-monitor", name: "Desk monitor", kind: "display", online: false },
-];
-
 const TOPIC = "vision-ai-devices";
 
 /**
@@ -25,44 +16,86 @@ const TOPIC = "vision-ai-devices";
 const shared = {
   channel: null,
   identity: null,
+  presence: {},
   listeners: new Set(),
-  devices: MOCK_DEVICES,
+  devices: [],
 };
 
 function toDeviceList(presenceState) {
-  const others = Object.values(presenceState)
-    .flat()
-    .filter((p) => p.id !== shared.identity.id)
-    .map((p) => ({
-      id: p.id,
-      name: p.name,
-      kind: p.kind ?? "browser",
+  const seen = new Set([shared.identity.id]);
+  const list = [
+    {
+      id: shared.identity.id,
+      name: shared.identity.name,
+      kind: shared.identity.kind,
       online: true,
-    }));
-  return [THIS_DEVICE, ...others];
+    },
+  ];
+
+  Object.values(presenceState)
+    .flat()
+    .forEach((p) => {
+      if (!p || seen.has(p.id)) return;
+      seen.add(p.id);
+      list.push({
+        id: p.id,
+        name: p.name ?? "Unknown device",
+        kind: p.kind ?? "browser",
+        online: true,
+      });
+    });
+
+  return list;
+}
+
+function refreshDevices() {
+  shared.devices = toDeviceList(shared.presence);
+  shared.listeners.forEach((listener) => listener(shared.devices));
+}
+
+/**
+ * Upserts this device into the `devices` table so it's registered (and its
+ * friendly name persisted) even when no other device is online.
+ */
+async function registerDevice() {
+  if (!supabase) return;
+  try {
+    await supabase.from("devices").upsert(
+      {
+        id: shared.identity.id,
+        name: shared.identity.name,
+        kind: shared.identity.kind,
+        last_seen_at: new Date().toISOString(),
+      },
+      { onConflict: "id" }
+    );
+  } catch {
+    // Non-fatal: the presence channel below still announces this device in realtime.
+  }
 }
 
 function ensureSubscription() {
   if (shared.channel) return;
 
-  const identity = getDeviceIdentity();
-  shared.identity = identity;
+  shared.identity = getDeviceIdentity();
+  refreshDevices();
+  registerDevice();
 
   const channel = supabase.channel(TOPIC, {
-    config: { presence: { key: identity.id } },
+    config: { presence: { key: shared.identity.id } },
   });
 
   channel
     .on("presence", { event: "sync" }, () => {
-      shared.devices = toDeviceList(channel.presenceState());
-      shared.listeners.forEach((listener) => listener(shared.devices));
+      shared.presence = channel.presenceState();
+      refreshDevices();
     })
     .subscribe(async (status) => {
       if (status === "SUBSCRIBED") {
         await channel.track({
-          id: identity.id,
-          name: identity.name,
-          kind: identity.kind,
+          id: shared.identity.id,
+          name: shared.identity.name,
+          kind: shared.identity.kind,
           last_seen: Date.now(),
         });
       }
@@ -72,18 +105,25 @@ function ensureSubscription() {
 }
 
 /**
- * Reads the realtime presence channel so devices appear/disappear as they
- * connect. Falls back to the mock list when NEXT_PUBLIC_SUPABASE_* aren't set.
+ * Realtime device list: the current device (always first) plus every other
+ * device that joins the presence channel. When Supabase isn't configured, the
+ * current device is still reported so it's always recognized.
  */
 export function useDevices() {
-  const [devices, setDevices] = useState(MOCK_DEVICES);
+  const [devices, setDevices] = useState([]);
 
   useEffect(() => {
-    if (!supabase) return;
+    const identity = getDeviceIdentity();
+    const self = { id: identity.id, name: identity.name, kind: identity.kind, online: true };
+
+    if (!supabase) {
+      setDevices([self]);
+      return;
+    }
 
     ensureSubscription();
     shared.listeners.add(setDevices);
-    setDevices(shared.devices);
+    setDevices(shared.devices.length ? shared.devices : [self]);
 
     return () => {
       shared.listeners.delete(setDevices);

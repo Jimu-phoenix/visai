@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { MessageSquare, Mic, MonitorSmartphone, Tv } from "lucide-react";
+import { MessageSquare, Mic, MonitorSmartphone, Smartphone, Tablet, Tv } from "lucide-react";
 import ApertureMark from "./ApertureMark";
 import { useDevices } from "@/lib/useDevices";
 
@@ -48,25 +48,31 @@ export default function Sidebar() {
           Devices in view
         </p>
         <div className="flex flex-col gap-1">
-          {devices.map((device) => (
-            <div
-              key={device.id}
-              className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-paper/90"
-            >
-              {device.kind === "display" ? (
-                <Tv size={15} className={device.online ? "text-cyan" : "text-muted"} />
-              ) : (
-                <MonitorSmartphone size={15} className={device.online ? "text-cyan" : "text-muted"} />
-              )}
-              <span className={device.online ? "" : "text-muted"}>{device.name}</span>
-              <span
-                className={`ml-auto h-1.5 w-1.5 rounded-full ${
-                  device.online ? "bg-cyan" : "bg-hairline"
-                }`}
-                aria-label={device.online ? "online" : "offline"}
-              />
-            </div>
-          ))}
+          {devices.map((device) => {
+            const Icon =
+              device.kind === "display" || device.kind === "tv"
+                ? Tv
+                : device.kind === "mobile"
+                  ? Smartphone
+                  : device.kind === "tablet"
+                    ? Tablet
+                    : MonitorSmartphone;
+            return (
+              <div
+                key={device.id}
+                className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-paper/90"
+              >
+                <Icon size={15} className={device.online ? "text-cyan" : "text-muted"} />
+                <span className={device.online ? "" : "text-muted"}>{device.name}</span>
+                <span
+                  className={`ml-auto h-1.5 w-1.5 rounded-full ${
+                    device.online ? "bg-cyan" : "bg-hairline"
+                  }`}
+                  aria-label={device.online ? "online" : "offline"}
+                />
+              </div>
+            );
+          })}
         </div>
       </div>
     </aside>

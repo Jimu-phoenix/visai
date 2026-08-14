@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Mic, MicOff } from "lucide-react";
 import ApertureMark from "@/components/ApertureMark";
 import DeviceChip from "@/components/DeviceChip";
@@ -9,10 +9,16 @@ import { useSpeech } from "@/lib/useSpeech";
 import { sendMessage } from "@/lib/groqClient";
 
 export default function VoicePage() {
-  const [target, setTarget] = useState("this");
+  const [target, setTarget] = useState(null);
   const [lastReply, setLastReply] = useState("");
   const [thinking, setThinking] = useState(false);
   const devices = useDevices();
+
+  useEffect(() => {
+    if (target === null && devices.length > 0) {
+      setTarget(devices[0].id);
+    }
+  }, [devices, target]);
 
   const handleFinalResult = useCallback(async (transcript) => {
     if (!transcript) return;

@@ -5,6 +5,7 @@ import { ArrowUp } from "lucide-react";
 import MessageBubble from "@/components/MessageBubble";
 import DeviceChip from "@/components/DeviceChip";
 import { useDevices } from "@/lib/useDevices";
+import { getDeviceIdentity } from "@/lib/deviceIdentity";
 import { sendMessage } from "@/lib/groqClient";
 
 const WELCOME = {
@@ -16,10 +17,16 @@ const WELCOME = {
 export default function ChatPage() {
   const [messages, setMessages] = useState([WELCOME]);
   const [input, setInput] = useState("");
-  const [target, setTarget] = useState("this");
+  const [target, setTarget] = useState(null);
   const [pending, setPending] = useState(false);
   const scrollRef = useRef(null);
   const devices = useDevices();
+
+  useEffect(() => {
+    if (target === null && devices.length > 0) {
+      setTarget(devices[0].id);
+    }
+  }, [devices, target]);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
@@ -39,9 +46,13 @@ export default function ChatPage() {
       const reply = await sendMessage(
         nextMessages.map(({ role, content }) => ({ role, content }))
       );
+      const routedTo =
+        target !== getDeviceIdentity().id
+          ? devices.find((d) => d.id === target)?.name ?? null
+          : null;
       setMessages((prev) => [
         ...prev,
-        { role: "assistant", content: reply.content, targetDevice: target },
+        { role: "assistant", content: reply.content, targetDevice: routedTo },
       ]);
     } catch (err) {
       setMessages((prev) => [
@@ -50,7 +61,7 @@ export default function ChatPage() {
           role: "assistant",
           content:
             "Backend isn't wired up yet (this is a UI scaffold) — connect /api/chat to Groq to get real replies.",
-          targetDevice: target,
+          targetDevice: null,
         },
       ]);
     } finally {

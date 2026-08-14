@@ -19,7 +19,7 @@ export default function MessageBubble({ role, content, targetDevice }) {
             <ReactMarkdown>{content}</ReactMarkdown>
           </div>
         )}
-        {targetDevice && targetDevice !== "this" && (
+        {targetDevice && (
           <div className="mt-1.5 font-mono text-[10px] uppercase tracking-wider text-cyan/80">
             → routed to {targetDevice}
           </div>
